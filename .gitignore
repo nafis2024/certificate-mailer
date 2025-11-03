@@ -1,0 +1,9 @@
+# Ignore sensitive info
+config.json
+
+# Ignore generated certificates
+/output/
+
+# Ignore system files
+__pycache__/
+*.pyc
