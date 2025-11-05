@@ -37,7 +37,7 @@ CONFIG_JSON = Path("config.json")
 OUTPUT_DIR = Path("output")
 DEFAULT_FONT_SIZE = 80
 # Vertical coordinate where name will be drawn (adjust to your template)
-TEXT_Y = 600
+TEXT_Y = 580
 
 # ---------------------------
 # Utilities
@@ -170,7 +170,7 @@ def make_message(sender: str, recipient_email: str, recipient_name: str, body_te
 
 def send_email(config: dict, recipient_email: str, recipient_name: str, attachment_path: Path, body_text: Optional[str] = None):
     if body_text is None:
-        body_text = f"Dear {recipient_name},\n\nPlease find your certificate attached.\n\nBest regards."
+        body_text = f"Dear {recipient_name},\\nThank you for participating in the event. Your certificate of participation has been attached to this email.\\n\\nRegards,\\nNDITC"
 
     msg = make_message(config["email"], recipient_email, recipient_name, body_text, attachment_path)
 
