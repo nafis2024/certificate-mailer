@@ -1,274 +1,124 @@
-#!/usr/bin/env python3
-"""
-main.py - Certificate mailer (hard-coded template & centered text)
-
-Usage:
-    python3 main.py
-
-Files expected (hard-coded):
-    - certificates/template.png   <-- certificate template image
-    - data.csv                    <-- CSV with lines: name,email
-    - config.json                 <-- email settings (not committed)
-Output:
-    - output/<sanitized_name>.png
-"""
-
 import csv
-import json
 import os
-import re
-import sys
+import json
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-from pathlib import Path
-from typing import Optional, Tuple
-
+from email.message import EmailMessage
 from PIL import Image, ImageDraw, ImageFont
 
-# ---------------------------
-# Hard-coded project paths
-# ---------------------------
-TEMPLATE_PATH = Path("certificates/template.png")
-DATA_CSV = Path("data.csv")
-CONFIG_JSON = Path("config.json")
-OUTPUT_DIR = Path("output")
-DEFAULT_FONT_SIZE = 80
-# Vertical coordinate where name will be drawn (adjust to your template)
-TEXT_Y = 580
 
-# ---------------------------
-# Utilities
-# ---------------------------
-def load_config(path: Path) -> dict:
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Missing config file: {path}\nCreate it with keys: email, app_password, smtp_server, smtp_port"
-        )
-    with path.open("r", encoding="utf-8") as f:
-        cfg = json.load(f)
-    required = ["email", "app_password", "smtp_server", "smtp_port"]
-    missing = [k for k in required if k not in cfg]
-    if missing:
-        raise KeyError(f"Missing keys in config.json: {missing}")
-    return cfg
+def load_config():
+    with open("config.json", "r") as f:
+        return json.load(f)
 
-def sanitize_filename(name: str) -> str:
-    # Remove problematic characters, limit length
-    safe = re.sub(r"[^\w\-_(). ]", "", name).strip()
-    if not safe:
-        safe = "recipient"
-    return safe[:120]
 
-def find_font(preferred_size: int = DEFAULT_FONT_SIZE) -> Tuple[ImageFont.FreeTypeFont | ImageFont.ImageFont, int]:
-    """
-    Try several common fonts. If none available, fallback to Pillow default.
-    Returns (font_object, size_used)
-    """
-    # Common font paths on Linux / macOS / Windows (codespaces and many linux envs have DejaVu)
-    candidates = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSerif.ttf",
-        "/Library/Fonts/Arial.ttf",  # macOS
-        "C:\\Windows\\Fonts\\arial.ttf",  # Windows
-    ]
-    for p in candidates:
-        try:
-            if Path(p).exists():
-                return ImageFont.truetype(p, preferred_size), preferred_size
-        except Exception:
-            continue
+def load_recipients(csv_file):
+    recipients = []
+    with open(csv_file, "r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if not row.get("name") or not row.get("email") or not row.get("piORth"):
+                print("⚠️ Skipping a row: missing one of 'name', 'email', 'piORth'.")
+                continue
+            recipients.append(row)
+    return recipients
 
-    # If no TTF found, fallback to default (size ignored)
-    return ImageFont.load_default(), DEFAULT_FONT_SIZE
 
-def ensure_output_dir():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def write_text_on_image(name, template_config, output_folder):
+    template_path = template_config["template_path"]
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"Template not found: {template_path}")
 
-# ---------------------------
-# Image / Certificate logic
-# ---------------------------
-def write_text_on_image(name: str, template: Path = TEMPLATE_PATH, y_pos: int = TEXT_Y) -> Path:
-    """
-    Draw `name` centered horizontally on the given template and save PNG to output/.
-    Returns path to generated image.
-    """
-    if not template.exists():
-        raise FileNotFoundError(f"Certificate template not found: {template}")
-
-    # Load image
-    image = Image.open(template).convert("RGBA")
+    image = Image.open(template_path).convert("RGBA")
     draw = ImageDraw.Draw(image)
 
-    # Load font (with fallback)
-    font, used_size = find_font(DEFAULT_FONT_SIZE)
+    font_path = template_config["font_path"]
+    font = ImageFont.truetype(font_path, template_config["font_size"])
 
-    # Measure text (use textbbox for more reliable measurements)
-    text = name.strip()
-    # Pillow's textbbox requires specifying anchor position; measure from (0,0)
-    bbox = draw.textbbox((0, 0), text, font=font)
+    text_color = tuple(template_config["font_color"])
+    y = template_config["text_position"][1]
+
+    # Center text horizontally
+    bbox = draw.textbbox((0, 0), name, font=font)
     text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
+    x = (image.width - text_width) / 2
 
-    img_width, img_height = image.size
-    x = (img_width - text_width) / 2
-    y = y_pos
+    draw.text((x, y), name, font=font, fill=text_color)
 
-    # Optionally, add subtle shadow for better contrast (draw shadow then text)
-    shadow_offset = 2
-    try:
-        # Shadow
-        draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill=(0, 0, 0, 150))
-    except Exception:
-        # If RGBA issues, ignore shadow
-        pass
+    os.makedirs(output_folder, exist_ok=True)
+    output_file = os.path.join(output_folder, f"{name}.png")
+    image.save(output_file)
+    return output_file
 
-    # Main text (choose black or dark gray)
-    draw.text((x, y), text, font=font, fill=(10, 10, 10, 255))
 
-    # Ensure output dir exists
-    ensure_output_dir()
-
-    # Make a safe filename
-    safe_name = sanitize_filename(name)
-    output_path = OUTPUT_DIR / f"{safe_name}.png"
-
-    # Save as PNG to preserve quality
-    # Convert to RGB if template was not RGBA to avoid metadata issues
-    if image.mode in ("RGBA", "LA"):
-        # Flatten transparency onto white background for compatibility
-        background = Image.new("RGB", image.size, (255, 255, 255))
-        background.paste(image, mask=image.split()[-1])  # alpha channel as mask
-        background.save(output_path, format="PNG")
-    else:
-        image.save(output_path, format="PNG")
-
-    return output_path
-
-# ---------------------------
-# Email logic
-# ---------------------------
-def make_message(sender: str, recipient_email: str, recipient_name: str, body_text: str, attachment_path: Path) -> MIMEMultipart:
-    msg = MIMEMultipart()
-    msg["From"] = sender
+def send_email(recipient_name, recipient_email, output_file, template_config, email_settings):
+    msg = EmailMessage()
+    msg["Subject"] = template_config["email_subject"]
+    msg["From"] = email_settings["sender_email"]
     msg["To"] = recipient_email
-    msg["Subject"] = f"Certificate of Achievement - {recipient_name}"
-    msg.attach(MIMEText(body_text, "plain"))
 
-    # Attach file
-    with attachment_path.open("rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f'attachment; filename="{attachment_path.name}"')
-    msg.attach(part)
-    return msg
+    msg.set_content(template_config["email_body"].format(name=recipient_name))
 
-def send_email(config: dict, recipient_email: str, recipient_name: str, attachment_path: Path, body_text: Optional[str] = None):
-    if body_text is None:
-        body_text = f"Dear {recipient_name},\\nThank you for participating in the event. Your certificate of participation has been attached to this email.\\n\\nRegards,\\nNDITC"
+    with open(output_file, "rb") as f:
+        msg.add_attachment(f.read(), maintype="image", subtype="png", filename=os.path.basename(output_file))
 
-    msg = make_message(config["email"], recipient_email, recipient_name, body_text, attachment_path)
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.starttls()
+        smtp.login(email_settings["sender_email"], email_settings["sender_password"])
+        smtp.send_message(msg)
 
-    # Connect to SMTP
-    server = smtplib.SMTP(config["smtp_server"], int(config["smtp_port"]), timeout=30)
-    try:
-        server.starttls()
-        server.login(config["email"], config["app_password"])
-        server.send_message(msg)
-    finally:
-        server.quit()
 
-# ---------------------------
-# CSV reading
-# ---------------------------
-def read_recipients(csv_path: Path):
-    if not csv_path.exists():
-        raise FileNotFoundError(f"CSV file not found: {csv_path}")
-    items = []
-    with csv_path.open(newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            # Skip blank rows
-            if not row or all(not cell.strip() for cell in row):
-                continue
-            # Support possible header: if first row contains "name" or "email", skip it
-            if len(items) == 0 and any(h.lower() in ("name", "email") for h in row):
-                # This is a header row — skip it
-                continue
-            # Expect at least two columns: name, email
-            if len(row) < 2:
-                print(f"Skipping invalid row (need name,email): {row}")
-                continue
-            name, email = row[0].strip(), row[1].strip()
-            if not name or not email:
-                print(f"Skipping incomplete row: {row}")
-                continue
-            items.append((name, email))
-    return items
-
-# ---------------------------
-# Main flow
-# ---------------------------
 def main():
     print("Certificate Mailer - starting...\n")
 
-    # Load config
-    try:
-        config = load_config(CONFIG_JSON)
-    except Exception as e:
-        print("ERROR: Failed to load config.json ->", e)
-        print("\nCreate a config.json file with contents like:\n"
-              '{\n  "email": "youremail@example.com",\n  "app_password": "your_app_password",\n  "smtp_server": "smtp.gmail.com",\n  "smtp_port": 587\n}\n')
-        sys.exit(1)
-
-    # Read recipients
-    try:
-        recipients = read_recipients(DATA_CSV)
-    except Exception as e:
-        print("ERROR: Failed to read data.csv ->", e)
-        sys.exit(1)
+    config = load_config()
+    recipients = load_recipients(config["input_csv"])
 
     if not recipients:
-        print("No recipients found in data.csv. Exiting.")
-        sys.exit(0)
+        print("No valid recipients found.")
+        return
 
-    # Show summary and ask for confirmation
-    print(f"Template (hard-coded): {TEMPLATE_PATH}")
-    print(f"Recipients found: {len(recipients)}")
-    print(f"Output folder: {OUTPUT_DIR.resolve()}\n")
+    output_folder = config["output_folder"]
+    print(f"Recipients loaded: {len(recipients)}")
+    print(f"Output directory: {os.path.abspath(output_folder)}\n")
 
     proceed = input("Proceed to generate and send certificates? (yes/no) [no]: ").strip().lower()
-    if proceed not in ("yes", "y"):
+    if proceed != "yes":
         print("Aborted by user.")
-        sys.exit(0)
+        return
 
-    success_count = 0
-    fail_count = 0
-    for idx, (name, email) in enumerate(recipients, start=1):
-        print(f"\n[{idx}/{len(recipients)}] Processing: {name} <{email}>")
+    total = len(recipients)
+    success, failed = 0, 0
+
+    for idx, recipient in enumerate(recipients, start=1):
+        name = recipient["name"].strip()
+        email = recipient["email"].strip()
+        group = recipient["piORth"].strip()
+
+        print(f"[{idx}/{total}] Processing: {name} <{email}>")
+
+        if group not in config["templates"]:
+            print(f"  !! Unknown group: {group}. Skipping.")
+            failed += 1
+            continue
+
+        template_cfg = config["templates"][group]
+
         try:
-            out_path = write_text_on_image(name)
-            print(f"  -> Saved: {out_path}")
-
-            # Optionally craft a custom email body; simple default used here
-            send_email(config, email, name, out_path)
-            print(f"  -> Email sent to {email}")
-            success_count += 1
+            output_file = write_text_on_image(name, template_cfg, output_folder)
+            print(f"  -> Saved: {output_file}")
+            send_email(name, email, output_file, template_cfg, config["email_settings"])
+            print(f"  ✅ Sent to {email}\n")
+            success += 1
         except Exception as e:
-            print(f"  !! Failed for {name} <{email}>: {e}")
-            fail_count += 1
+            print(f"  !! Failed for {name} <{email}>: {e}\n")
+            failed += 1
 
-    # Summary
     print("\n--- Summary ---")
-    print(f"Total attempted: {len(recipients)}")
-    print(f"Successful: {success_count}")
-    print(f"Failed: {fail_count}")
+    print(f"Total attempted: {total}")
+    print(f"Successful: {success}")
+    print(f"Failed: {failed}")
     print("Finished.")
+
 
 if __name__ == "__main__":
     main()

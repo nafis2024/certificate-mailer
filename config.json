@@ -3,26 +3,26 @@
   "output_folder": "output",
   "templates": {
     "th": {
-      "template_path": "templates/th_template.png",
-      "font_path": "fonts/Poppins-Regular.ttf",
+      "template_path": "templates/th_template.jpg",
+      "font_path": "fonts/Montserrat-Bold.ttf",
       "font_size": 72,
       "font_color": [0, 0, 0],
-      "text_position": [800, 580],
+      "text_position": [900, 597],
       "email_subject": "Certificate of Participation - Thynk NDITC",
-      "email_body": "Dear {name},\n\nWe’re thrilled to recognize your participation in the Thynk event! Kindly find your certificate of participation attatched.\n\nKeep inspiring,\nNDITC"
+      "email_body": "Dear {name},\n\nWe’re thrilled to recognize your participation in the Thynk event! Kindly find your certificate of participation attached.\n\nKeep inspiring,\nNDITC"
     },
     "pi": {
-      "template_path": "templates/pi_template.png",
-      "font_path": "fonts/Poppins-Regular.ttf",
+      "template_path": "templates/pi_template.jpg",
+      "font_path": "fonts/Montserrat-Bold.ttf",
       "font_size": 72,
       "font_color": [255, 255, 255],
-      "text_position": [900, 580],
+      "text_position": [900, 597],
       "email_subject": "Certificate of Participation - Pixelcon NDITC",
-      "email_body": "Dear {name},\n\nWe’re thrilled to recognize your participation in the Pixelcon event! Kindly find your certificate of participation attatched.\n\nKeep inspiring,\nNDITC"
+      "email_body": "Dear {name},\n\nWe’re thrilled to recognize your participation in the Pixelcon event! Kindly find your certificate of participation attached.\n\nKeep inspiring,\nNDITC"
     }
   },
   "email_settings": {
     "sender_email": "mohammadnafisfuad7@gmail.com",
-    "sender_password": "uutmcsfwqlcjlwrt"
+    "sender_password": "your_app_password"
   }
 }
