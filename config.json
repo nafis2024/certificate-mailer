@@ -5,24 +5,24 @@
     "th": {
       "template_path": "templates/th_template.jpg",
       "font_path": "fonts/Montserrat-Bold.ttf",
-      "font_size": 72,
+      "font_size": 82,
       "font_color": [0, 0, 0],
-      "text_position": [900, 597],
+      "text_position": [900, 575],
       "email_subject": "Certificate of Participation - Thynk NDITC",
-      "email_body": "Dear {name},\n\nWe’re thrilled to recognize your participation in the Thynk event! Kindly find your certificate of participation attached.\n\nKeep inspiring,\nNDITC"
+      "email_body": "Dear {name},\nThank you for being a part of our Thynk 4.0 event! It was a pleasure having you with us and contributing to the event’s success. Your participation in the segments added real value to the overall experience.\n\nPlease find your certificate attached with this email. We truly appreciate your contribution and hope to see you continue your journey of learning and creativity.\n\nWarm regards,\nNotre Dame Information Technology Club"
     },
     "pi": {
       "template_path": "templates/pi_template.jpg",
       "font_path": "fonts/Montserrat-Bold.ttf",
-      "font_size": 72,
-      "font_color": [255, 255, 255],
-      "text_position": [900, 597],
+      "font_size": 82,
+      "font_color": [0, 0, 0],
+      "text_position": [900, 575],
       "email_subject": "Certificate of Participation - Pixelcon NDITC",
-      "email_body": "Dear {name},\n\nWe’re thrilled to recognize your participation in the Pixelcon event! Kindly find your certificate of participation attached.\n\nKeep inspiring,\nNDITC"
+      "email_body": "Dear {name},\nThank you for being a part of our Pixelcon 4.0 event! It was a pleasure having you with us and contributing to the event’s success. Your participation in the segments added real value to the overall experience.\n\nPlease find your certificate attached with this email. We truly appreciate your contribution and hope to see you continue your journey of learning and creativity.\n\nWarm regards,\nNotre Dame Information Technology Club"
     }
   },
   "email_settings": {
-    "sender_email": "mohammadnafisfuad7@gmail.com",
-    "sender_password": "your_app_password"
+    "sender_email": "",
+    "sender_password": "your_password_here"
   }
 }

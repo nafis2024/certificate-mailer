@@ -45,7 +45,7 @@ def write_text_on_image(name, template_config, output_folder):
     draw.text((x, y), name, font=font, fill=text_color)
 
     os.makedirs(output_folder, exist_ok=True)
-    output_file = os.path.join(output_folder, f"{name}.png")
+    output_file = os.path.join(output_folder, f"{name}.pdf")
     image.save(output_file)
     return output_file
 
